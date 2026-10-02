@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>יומן עבודות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Secular+One&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+</script>
+<style>
+  *{box-sizing:border-box}
+  :root{
+    --bg:#E9EDF0; --surface:#FFFFFF; --ink:#1B2631; --muted:#5A6774;
+    --line:#C9D1D8; --line-soft:#E1E6EA; --accent:#2350C8; --accent-soft:#E3EAFB;
+    --red:#B83227; --red-bg:#FBE3E0; --green:#2C7A4B; --green-soft:#E3F1E8;
+    color-scheme:light;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Assistant","Segoe UI",Arial,sans-serif;font-size:16px;line-height:1.45}
+  [hidden]{display:none!important}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    max-width:1400px;margin:0 auto;padding:18px clamp(12px,3vw,32px) 0}
+  .brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  h1{font-family:"Secular One","Assistant",Arial,sans-serif;font-weight:400;
+    font-size:clamp(1.7rem,4vw,2.3rem);margin:0;line-height:1.1}
+  .save-state{color:var(--muted);font-size:.9rem}
+  .save-state.err{color:var(--red);font-weight:600}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+
+  .btn{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);
+    padding:8px 14px;border-radius:8px;cursor:pointer;min-height:40px}
+  .btn:hover{border-color:var(--ink)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:#1B40A3;border-color:#1B40A3}
+
+  nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);
+    display:flex;gap:4px;max-width:1400px;margin:0 auto;padding:12px clamp(12px,3vw,32px) 0;
+    border-bottom:1px solid var(--line)}
+  .tab{font:inherit;font-weight:700;font-size:1.08rem;background:none;border:0;
+    border-bottom:4px solid transparent;color:var(--muted);padding:10px 14px;cursor:pointer;margin-bottom:-1px}
+  .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+  .tab:hover{color:var(--ink)}
+
+  main{max-width:1400px;margin:0 auto;padding:16px clamp(12px,3vw,32px) 32px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .stats{display:flex;gap:16px;font-weight:600}
+  .stat-red{color:var(--red)}
+  .tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .legend{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:.92rem}
+  .swatch{display:inline-block;width:16px;height:16px;background:var(--red-bg);border-right:4px solid var(--red);border-radius:2px}
+  .hint{color:var(--muted);font-size:.9rem;margin:10px 2px 0}
+
+  /* Work log table */
+  .table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+  table.log{width:100%;border-collapse:collapse;min-width:1240px}
+  .log th{background:#F3F5F7;text-align:right;font-weight:700;font-size:.92rem;padding:10px 10px;
+    border-bottom:2px solid var(--line);white-space:nowrap}
+  .log td{border-bottom:1px solid var(--line-soft);padding:4px;vertical-align:top}
+  .log td.c-name{min-width:150px}
+  .log td.c-wtype{width:115px}
+  .log td.c-date{width:150px}
+  .log td.c-type{width:125px}
+  .log td.c-place{min-width:140px}
+  .log td.c-company{min-width:120px}
+  .log td.c-invoice{width:260px}
+  .log td.c-notes{min-width:180px}
+  .log td.c-del{width:44px;text-align:center}
+  .log input[type=text],.log input[type=date],.log select{
+    display:block;width:100%;font:inherit;color:inherit;background:transparent;
+    border:1px solid transparent;border-radius:6px;padding:7px 8px;min-height:38px}
+  .log input:hover,.log select:hover{border-color:var(--line)}
+  .log input:focus,.log select:focus{background:#fff;border-color:var(--accent);outline:none;box-shadow:0 0 0 2px var(--accent-soft)}
+  .log select:disabled{opacity:.45}
+  .log tr.no-inv td{background:var(--red-bg)}
+  .log tr.no-inv td:first-child{box-shadow:inset -5px 0 0 var(--red)}
+  .log tr.is-empty input::placeholder{color:#8A96A1}
+
+  .inv-cell{display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px}
+  .log .inv-cell input.inv-no{flex:1 1 110px;width:auto;min-width:0}
+  .inv{display:inline-flex;align-items:center;gap:8px;cursor:pointer;padding:6px 8px;font-weight:600;user-select:none}
+  .inv input{width:20px;height:20px;margin:0;accent-color:var(--green);cursor:pointer}
+  .log tr.no-inv .inv span{color:var(--red)}
+  .log tr.is-empty .inv span{color:var(--muted)}
+  .inv-file{display:flex;align-items:center;gap:4px;flex-basis:100%;padding:0 4px 4px}
+  .file-btn{font:inherit;font-size:.88rem;font-weight:600;color:var(--accent);background:none;
+    border:1px dashed var(--accent);border-radius:6px;padding:3px 10px;cursor:pointer;min-height:32px}
+  .file-btn:hover{background:var(--accent-soft)}
+  .file-link{color:var(--accent);font-weight:600;font-size:.9rem;max-width:190px;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;display:inline-block}
+  .inv-note{flex-basis:100%;font-size:.82rem;color:var(--muted);padding:0 4px 4px}
+  .inv-note.err{color:var(--red);font-weight:600}
+
+  .del{border:0;background:none;color:var(--muted);font:inherit;font-size:1.05rem;width:36px;height:36px;
+    border-radius:6px;cursor:pointer;flex:none}
+  .del.small{width:28px;height:28px;font-size:.9rem}
+  .del:hover{background:var(--red-bg);color:var(--red)}
+  .log tr.is-empty:last-child .c-del .del{visibility:hidden}
+
+  @media (max-width:760px){
+    .table-wrap{background:none;border:0;overflow:visible}
+    table.log{min-width:0}
+    .log thead{display:none}
+    .log,.log tbody,.log tr,.log td{display:block}
+    .log tr{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+      padding:10px 12px;margin-bottom:10px;position:relative}
+    .log td,.log td.c-date,.log td.c-type,.log td.c-invoice,.log td.c-wtype{display:grid;grid-template-columns:7.5em 1fr;
+      align-items:center;gap:6px;border:0;padding:3px 0;width:auto;min-width:0}
+    .log td::before{content:attr(data-label);font-size:.88rem;font-weight:600;color:var(--muted)}
+    .log td.c-invoice{align-items:start}
+    .log td.c-invoice::before{padding-top:8px}
+    .log td.c-name{padding-left:40px}
+    .log td.c-del{position:absolute;top:8px;left:6px;display:block;padding:0;width:auto}
+    .log td.c-del::before{content:none}
+    .log input[type=text],.log input[type=date],.log select{border-color:var(--line);background:#fff}
+    .log tr.no-inv{background:var(--red-bg);border-color:var(--red);border-right-width:6px}
+    .log tr.no-inv td{background:transparent}
+    .log tr.no-inv td:first-child{box-shadow:none}
+    .log tr.is-empty{border-style:dashed}
+  }
+
+  /* Summary */
+  .range{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:var(--surface);
+    border:1px solid var(--line);border-radius:10px;padding:12px}
+  .range label,.add-form label,.wtype-field label{display:flex;flex-direction:column;gap:4px;font-size:.86rem;font-weight:600;color:var(--muted)}
+  .range input,.add-form input,.wtype-field select{font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);
+    border-radius:6px;padding:7px 8px;min-height:40px}
+  .range .spacer{flex:1}
+  .range-note{color:var(--muted);margin:10px 2px 4px;font-size:.92rem}
+
+  .emp{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-top:10px}
+  .emp>summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 20px;padding:14px 16px;cursor:pointer;list-style:none}
+  .emp>summary::-webkit-details-marker{display:none}
+  .emp>summary::before{content:"+";font-weight:700;font-size:1.3rem;color:var(--accent);width:.9em;align-self:center}
+  .emp[open]>summary::before{content:"−"}
+  .emp-name{font-family:"Secular One","Assistant",Arial,sans-serif;font-size:1.35rem;line-height:1.2}
+  .wtype{align-self:center;font-size:.85rem;font-weight:700;padding:2px 10px;border-radius:999px;
+    background:var(--accent-soft);color:var(--accent)}
+  .wtype.kablan{background:var(--green-soft);color:var(--green)}
+  .wtype.none{background:#EEF0F2;color:var(--muted);font-weight:600}
+  .days{display:inline-flex;align-items:baseline;gap:6px;color:var(--accent);font-weight:700}
+  .days b{font-family:"Secular One","Assistant",Arial,sans-serif;font-weight:400;font-size:1.75rem;line-height:1}
+  .meta{color:var(--muted);font-weight:600}
+  .warn{color:var(--red);font-weight:700}
+  .emp-body{padding:2px 16px 16px;border-top:1px solid var(--line-soft)}
+  .emp-body h3{font-size:1.02rem;margin:16px 0 8px}
+  .wtype-field{margin-top:14px}
+  .wtype-field label{flex-direction:row;align-items:center;gap:10px;font-size:.95rem;color:var(--ink)}
+  .muted{color:var(--muted);margin:6px 0}
+
+  .mini-wrap{overflow-x:auto}
+  table.mini{width:100%;border-collapse:collapse;font-size:.95rem;min-width:760px}
+  .mini th{text-align:right;font-weight:700;font-size:.86rem;color:var(--muted);padding:6px 8px;border-bottom:2px solid var(--line)}
+  .mini td{padding:7px 8px;border-bottom:1px solid var(--line-soft)}
+  .mini tr.no-inv td{background:var(--red-bg)}
+  .mini tr.no-inv td:first-child{box-shadow:inset -4px 0 0 var(--red)}
+  .mini a{color:var(--accent);font-weight:600}
+
+  .extras{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:6px}
+  .extras section{background:#F6F8FA;border:1px solid var(--line-soft);border-radius:8px;padding:2px 12px 12px}
+  .add-form{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+  .add-form input[type=number]{width:6.5em}
+  ul.items{list-style:none;padding:0;margin:10px 0 0}
+  ul.items li{display:flex;align-items:center;gap:12px;padding:4px 0;border-bottom:1px solid var(--line-soft)}
+  ul.items li span:first-child{min-width:6.5em;font-variant-numeric:tabular-nums}
+  ul.items li .grow{flex:1}
+  ul.items li.out{opacity:.45}
+  .out-note{font-size:.84rem;color:var(--muted);margin:6px 0 0}
+
+  .empty-state{text-align:center;padding:48px 16px;color:var(--muted)}
+  .empty-state p{margin:4px 0}
+
+  footer.credit{max-width:1400px;margin:0 auto;padding:8px clamp(12px,3vw,32px) 28px;
+    text-align:center;color:var(--muted);font-size:.88rem}
+
+  @media (prefers-reduced-motion:no-preference){
+    .emp[open]>.emp-body{animation:open .18s ease-out}
+    @keyframes open{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <h1>יומן עבודות</h1>
+    <span id="saveState" class="save-state" role="status"></span>
+  </div>
+  <div class="actions">
+    <button class="btn" id="backupBtn" type="button">גיבוי לקובץ</button>
+    <button class="btn" id="restoreBtn" type="button">שחזור מגיבוי</button>
+    <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab" role="tab" id="tab-log" data-tab="log" aria-controls="panel-log" aria-selected="true" type="button">רישום עבודות</button>
+  <button class="tab" role="tab" id="tab-summary" data-tab="summary" aria-controls="panel-summary" aria-selected="false" type="button">סיכום עובדים</button>
+</nav>
+
+<main>
+  <section id="panel-log" role="tabpanel" aria-labelledby="tab-log">
+    <div class="toolbar">
+      <div class="stats"><span id="statRows"></span><span id="statNoInv" class="stat-red"></span></div>
+      <div class="tools">
+        <span class="legend"><i class="swatch"></i>שורה אדומה: אין חשבונית</span>
+        <button class="btn" id="sortBtn" type="button">מיון לפי תאריך</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="log">
+        <thead>
+          <tr>
+            <th>שם העובד</th><th>סוג עובד</th><th>תאריך</th><th>סוג עבודה</th><th>מקום עבודה</th>
+            <th>חברה</th><th>קיימת חשבונית?</th><th>הערות</th><th><span class="sr">מחיקה</span></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="hint">שורה חדשה נוספת אוטומטית כשמתחילים למלא את השורה האחרונה. כל שורה היא יום עבודה אחד של עובד אחד. סוג העובד נשמר לכל עובד, כך שמספיק לבחור אותו פעם אחת.</p>
+  </section>
+
+  <section id="panel-summary" role="tabpanel" aria-labelledby="tab-summary" hidden>
+    <div class="range">
+      <label>מתאריך<input type="date" id="rFrom"></label>
+      <label>עד תאריך<input type="date" id="rTo"></label>
+      <button class="btn" id="thisMonth" type="button">החודש</button>
+      <button class="btn" id="lastMonth" type="button">החודש הקודם</button>
+      <button class="btn" id="clearRange" type="button">כל התאריכים</button>
+      <span class="spacer"></span>
+      <button class="btn primary" id="exportBtn" type="button">ייצוא לאקסל</button>
+    </div>
+    <p id="rangeNote" class="range-note"></p>
+    <div id="empList"></div>
+  </section>
+</main>
+
+<footer class="credit" id="credit"></footer>
+
+<script>
+(function(){
+  /* ===== שם הקרדיט: מופיע בתחתית האתר ובקובץ האקסל ===== */
+  const CREDIT_NAME = 'דוד קופצוב';
+
+  const KEY = 'worklog-v1';
+  const TYPES = ['יומית','פרויקט','קבלנות'];
+  const WTYPES = ['בשכר','קבלן'];
+  const COLS = [
+    {f:'name',    label:'שם העובד',        kind:'text'},
+    {f:'wtype',   label:'סוג עובד',        kind:'wtype'},
+    {f:'date',    label:'תאריך',           kind:'date'},
+    {f:'type',    label:'סוג עבודה',       kind:'select'},
+    {f:'place',   label:'מקום עבודה',      kind:'text'},
+    {f:'company', label:'חברה',            kind:'text'},
+    {f:'invoice', label:'קיימת חשבונית?',  kind:'invoice'},
+    {f:'notes',   label:'הערות',           kind:'text'}
+  ];
+
+  const $ = s => document.querySelector(s);
+  const pad = n => String(n).padStart(2,'0');
+  const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const todayISO = () => iso(new Date());
+  const parseISO = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+  const fmt = s => { if(!s) return ''; const p = s.split('-'); return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : s; };
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const byDate = (a,b) => (a.date || '9999-99-99').localeCompare(b.date || '9999-99-99');
+  const round = n => Math.round(n*100)/100;
+  const validISO = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+
+  $('#credit').textContent = `נבנה על ידי ${CREDIT_NAME}`;
+
+  /* ---------- Invoice files (IndexedDB) ---------- */
+  const DB_NAME = 'worklog-files', STORE = 'files';
+  let dbPromise = null, filesOK = false;
+  const fileCache = new Map(); // id -> {name, type, blob, url}
+
+  function db(){
+    if(!dbPromise) dbPromise = new Promise((res, rej) => {
+      if(!window.indexedDB) return rej(new Error('no indexedDB'));
+      const q = indexedDB.open(DB_NAME, 1);
+      q.onupgradeneeded = () => q.result.createObjectStore(STORE, {keyPath:'id'});
+      q.onsuccess = () => res(q.result);
+      q.onerror = () => rej(q.error);
+    });
+    return dbPromise;
+  }
+  function tx(mode, fn){
+    return db().then(d => new Promise((res, rej) => {
+      const t = d.transaction(STORE, mode);
+      const req = fn(t.objectStore(STORE));
+      t.oncomplete = () => res(req ? req.result : undefined);
+      t.onerror = () => rej(t.error);
+      t.onabort = () => rej(t.error);
+    }));
+  }
+  const idbPut = rec => tx('readwrite', st => st.put(rec));
+  const idbDel = id => tx('readwrite', st => st.delete(id));
+  const idbAll = () => tx('readonly', st => st.getAll());
+  const idbClear = () => tx('readwrite', st => st.clear());
+
+  function guessType(name){
+    const n = (name || '').toLowerCase();
+    if(n.endsWith('.pdf')) return 'application/pdf';
+    if(/\.(jpe?g)$/.test(n)) return 'image/jpeg';
+    if(n.endsWith('.png')) return 'image/png';
+    return 'application/octet-stream';
+  }
+  function cacheFile(rec){
+    const blob = new Blob([rec.buf], {type: rec.type});
+    fileCache.set(rec.id, {name: rec.name, type: rec.type, blob, url: URL.createObjectURL(blob)});
+  }
+  async function removeFileData(id){
+    const f = fileCache.get(id);
+    if(f) URL.revokeObjectURL(f.url);
+    fileCache.delete(id);
+    try { await idbDel(id); } catch(e){}
+  }
+  const isPdf = rec => rec.type === 'application/pdf' || /\.pdf$/i.test(rec.name);
+
+  async function extractInvoiceNo(buf){
+    if(typeof pdfjsLib === 'undefined') return {no:'', reason:'offline'};
+    try {
+      const pdf = await pdfjsLib.getDocument({data: new Uint8Array(buf)}).promise;
+      let text = '';
+      for(let i = 1; i <= Math.min(pdf.numPages, 3); i++){
+        const page = await pdf.getPage(i);
+        const c = await page.getTextContent();
+        text += ' ' + c.items.map(it => it.str).join(' ');
+      }
+      if(!text.trim()) return {no:'', reason:'scan'};
+      return {no: findInvoiceNo(text), reason:''};
+    } catch(e){
+      return {no:'', reason:'error'};
+    }
+  }
+
+  function findInvoiceNo(raw){
+    const t = raw.replace(/\s+/g, ' ');
+    const rev = t.split('').reverse().join(''); // Hebrew PDFs sometimes come out mirrored
+    const heb = /(?:חשבונית|חשבון עסקה|קבלה)[^\d]{0,40}?(\d{3,12})(?![\d\/.\-])/;
+    const eng = /invoice\s*(?:no\.?|number|num\.?|#)?\s*[:#.]?\s*([A-Z]{0,4}-?\d{3,12})/i;
+
+    let m = t.match(heb); if(m) return m[1];
+    m = t.match(eng); if(m) return m[1];
+    m = rev.match(heb); if(m) return m[1].split('').reverse().join('');
+
+    const bad = /עוסק|ח\.?\s?פ|ע\.?\s?מ|טל|פקס|זהות|ת\.?\s?ז|רישום|הזמנה|לקוח|בנק|סניף|חשבון/;
+    for(const src of [t, rev]){
+      const re = /(מספר|מס['׳"]?)\s*[:.]?\s*(\d{3,12})(?![\d\/.\-])/g;
+      let g;
+      while((g = re.exec(src))){
+        const before = src.slice(Math.max(0, g.index - 18), g.index);
+        if(bad.test(before)) continue;
+        return src === t ? g[2] : g[2].split('').reverse().join('');
+      }
+    }
+    return '';
+  }
+
+  /* ---------- Data ---------- */
+  function blankRow(date){
+    return {id:uid(), date:date || todayISO(), name:'', type:'', place:'', company:'',
+      invoice:false, invoiceNo:'', invoiceFileId:'', invoiceFileName:'', notes:''};
+  }
+  function isEmpty(r){
+    return !r.name.trim() && !r.type && !r.place.trim() && !r.company.trim() && !r.notes.trim()
+      && !r.invoice && !r.invoiceNo.trim() && !r.invoiceFileId;
+  }
+  function lastFilledDate(s){
+    for(let i = s.rows.length-1; i >= 0; i--){
+      if(!isEmpty(s.rows[i]) && s.rows[i].date) return s.rows[i].date;
+    }
+    return '';
+  }
+  function ensureTrailing(s){
+    const last = s.rows[s.rows.length-1];
+    if(!last || !isEmpty(last)){ s.rows.push(blankRow(lastFilledDate(s))); return true; }
+    return false;
+  }
+  function normalize(raw){
+    const s = {rows:[], extras:{}, workerTypes:{}};
+    if(raw && Array.isArray(raw.rows)){
+      s.rows = raw.rows.filter(r => r && typeof r === 'object').map(r => ({
+        id: r.id || uid(),
+        date: validISO(r.date) ? r.date : '',
+        name: String(r.name || ''),
+        type: TYPES.includes(r.type) ? r.type : '',
+        place: String(r.place || ''),
+        company: String(r.company || ''),
+        invoice: !!r.invoice,
+        invoiceNo: String(r.invoiceNo || ''),
+        invoiceFileId: String(r.invoiceFileId || ''),
+        invoiceFileName: String(r.invoiceFileName || ''),
+        notes: String(r.notes || '')
+      })).filter(r => !isEmpty(r));
+    }
+    if(raw && raw.extras && typeof raw.extras === 'object'){
+      for(const [n, x] of Object.entries(raw.extras)){
+        const name = String(n).trim();
+        if(!name || !x) continue;
+        const bonuses = Array.isArray(x.bonuses) ? x.bonuses
+          .filter(b => b && validISO(b.date) && Number(b.hours) > 0)
+          .map(b => ({id:b.id || uid(), date:b.date, hours:Number(b.hours)})) : [];
+        const vacations = Array.isArray(x.vacations) ? x.vacations
+          .filter(v => v && validISO(v.date))
+          .map(v => ({id:v.id || uid(), date:v.date})) : [];
+        s.extras[name] = {bonuses, vacations};
+      }
+    }
+    if(raw && raw.workerTypes && typeof raw.workerTypes === 'object'){
+      for(const [n, t] of Object.entries(raw.workerTypes)){
+        if(String(n).trim() && WTYPES.includes(t)) s.workerTypes[String(n).trim()] = t;
+      }
+    }
+    ensureTrailing(s);
+    return s;
+  }
+
+  let state;
+  try { state = normalize(JSON.parse(localStorage.getItem(KEY) || 'null')); }
+  catch(e){ state = normalize(null); }
+
+  function setStatus(text, isErr){
+    const el = $('#saveState');
+    el.textContent = text;
+    el.classList.toggle('err', !!isErr);
+  }
+  function save(){
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+      setStatus('נשמר אוטומטית', false);
+    } catch(e){
+      setStatus('השמירה האוטומטית נכשלה. לחצו על "גיבוי לקובץ" כדי לא לאבד נתונים.', true);
+    }
+  }
+  const wtypeOf = name => state.workerTypes[(name || '').trim()] || '';
+
+  /* ---------- Work log table ---------- */
+  const tbody = $('#rows');
+
+  function updateRowClass(tr, r){
+    const empty = isEmpty(r);
+    tr.classList.toggle('is-empty', empty);
+    tr.classList.toggle('no-inv', !empty && !r.invoice);
+  }
+
+  function afterChange(r, tr){
+    updateRowClass(tr, r);
+    if(state.rows[state.rows.length-1] === r && !isEmpty(r)){
+      const nr = blankRow(r.date || lastFilledDate(state));
+      state.rows.push(nr);
+      tbody.appendChild(rowEl(nr));
+    }
+    save();
+    updateStats();
+  }
+
+  function replaceRow(tr, r, note, noteErr){
+    const n = rowEl(r, note, noteErr);
+    tr.replaceWith(n);
+    afterChange(r, n);
+    return n;
+  }
+
+  function syncWorkerTypeSelects(name){
+    tbody.querySelectorAll('tr').forEach(tr => {
+      if(tr._row && tr._row.name.trim() === name){
+        const sel = tr.querySelector('.c-wtype select');
+        if(sel) sel.value = wtypeOf(name);
+      }
+    });
+  }
+
+  function invoiceCell(r, tr, note, noteErr){
+    const wrap = document.createElement('div');
+    wrap.className = 'inv-cell';
+
+    const lab = document.createElement('label');
+    lab.className = 'inv';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = r.invoice;
+    cb.setAttribute('aria-label', 'קיימת חשבונית?');
+    const sp = document.createElement('span');
+    sp.textContent = r.invoice ? 'כן' : 'לא';
+    cb.addEventListener('change', () => {
+      r.invoice = cb.checked;
+      sp.textContent = cb.checked ? 'כן' : 'לא';
+      afterChange(r, tr);
+    });
+    lab.append(cb, sp);
+
+    const no = document.createElement('input');
+    no.type = 'text';
+    no.className = 'inv-no';
+    no.placeholder = 'מספר חשבונית';
+    no.autocomplete = 'off';
+    no.inputMode = 'numeric';
+    no.value = r.invoiceNo;
+    no.setAttribute('aria-label', 'מספר חשבונית');
+    no.addEventListener('input', () => { r.invoiceNo = no.value; afterChange(r, tr); });
+
+    const fileBox = document.createElement('div');
+    fileBox.className = 'inv-file';
+    const f = r.invoiceFileId ? fileCache.get(r.invoiceFileId) : null;
+
+    if(f){
+      const a = document.createElement('a');
+      a.className = 'file-link';
+      a.href = f.url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = f.name;
+      a.title = 'פתיחת הקובץ: ' + f.name;
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'del small';
+      rm.textContent = '✕';
+      rm.setAttribute('aria-label', 'הסרת הקובץ המצורף');
+      rm.title = 'הסרת הקובץ המצורף';
+      rm.addEventListener('click', async () => {
+        if(!confirm('להסיר את הקובץ המצורף? מספר החשבונית יישאר.')) return;
+        await removeFileData(r.invoiceFileId);
+        r.invoiceFileId = ''; r.invoiceFileName = '';
+        replaceRow(tr, r);
+      });
+      fileBox.append(a, rm);
+    } else {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'file-btn';
+      btn.textContent = 'צירוף קובץ חשבונית';
+      btn.addEventListener('click', () => {
+        if(!filesOK){ alert('הדפדפן הזה לא מאפשר לשמור קבצים. אפשר עדיין להקליד את מספר החשבונית ידנית.'); return; }
+        const inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = 'application/pdf,.pdf,image/*';
+        inp.addEventListener('change', () => { if(inp.files[0]) attachFile(r, inp.files[0], tr); });
+        inp.click();
+      });
+      fileBox.append(btn);
+      if(r.invoiceFileId && !note){
+        note = `הקובץ "${r.invoiceFileName}" לא נמצא במכשיר הזה. אפשר לצרף אותו שוב.`;
+      }
+    }
+
+    wrap.append(lab, no, fileBox);
+    if(note){
+      const n = document.createElement('div');
+      n.className = 'inv-note' + (noteErr ? ' err' : '');
+      n.textContent = note;
+      wrap.append(n);
+    }
+    return wrap;
+  }
+
+  async function attachFile(r, file, tr){
+    if(file.size > 15*1024*1024 && !confirm('הקובץ גדול מ־15MB ויגדיל מאוד את קובץ הגיבוי. לצרף בכל זאת?')) return;
+    const note = tr.querySelector('.inv-note') || Object.assign(document.createElement('div'), {className:'inv-note'});
+    note.textContent = 'שומר וקורא את הקובץ…';
+    tr.querySelector('.inv-cell').append(note);
+
+    let buf;
+    try { buf = await file.arrayBuffer(); } catch(e){ alert('לא ניתן לקרוא את הקובץ.'); return; }
+    const rec = {id:uid(), name:file.name, type:file.type || guessType(file.name), buf};
+    try { await idbPut(rec); }
+    catch(e){ alert('שמירת הקובץ נכשלה. ייתכן שאין מספיק מקום פנוי בדפדפן.'); note.remove(); return; }
+
+    if(r.invoiceFileId) await removeFileData(r.invoiceFileId);
+    cacheFile(rec);
+    r.invoiceFileId = rec.id;
+    r.invoiceFileName = rec.name;
+    r.invoice = true;
+
+    let msg = '', err = false;
+    if(isPdf(rec)){
+      const res = await extractInvoiceNo(buf.slice(0));
+      if(res.no){
+        if(!r.invoiceNo.trim() || r.invoiceNo.trim() === res.no){ r.invoiceNo = res.no; msg = 'מספר החשבונית נקרא מהקובץ. כדאי לוודא שהוא נכון.'; }
+        else msg = `בקובץ נמצא המספר ${res.no}, אבל השארתי את המספר שהקלדתם.`;
+      } else {
+        err = true;
+        msg = res.reason === 'scan' ? 'הקובץ סרוק כתמונה ואין בו טקסט. הקלידו את מספר החשבונית ידנית.'
+            : res.reason === 'offline' ? 'קריאת PDF דורשת חיבור לאינטרנט. הקלידו את המספר ידנית.'
+            : 'לא נמצא מספר חשבונית בקובץ. הקלידו אותו ידנית.';
+      }
+    } else {
+      msg = 'הקובץ צורף. בתמונה אי אפשר לקרוא את המספר, הקלידו אותו ידנית.';
+    }
+    replaceRow(tr, r, msg, err);
+  }
+
+  function rowEl(r, note, noteErr){
+    const tr = document.createElement('tr');
+    tr._row = r;
+    let wtypeSel = null;
+
+    COLS.forEach(c => {
+      const td = document.createElement('td');
+      td.dataset.label = c.label;
+      td.className = 'c-' + c.f;
+
+      if(c.kind === 'invoice'){
+        td.append(invoiceCell(r, tr, note, noteErr));
+        tr.append(td);
+        return;
+      }
+
+      let el;
+      if(c.kind === 'wtype'){
+        el = document.createElement('select');
+        el.innerHTML = '<option value="">בחרו…</option>' + WTYPES.map(t => `<option value="${t}">${t}</option>`).join('');
+        el.value = wtypeOf(r.name);
+        el.disabled = !r.name.trim();
+        el.setAttribute('aria-label', c.label);
+        el.addEventListener('change', () => {
+          const n = r.name.trim();
+          if(!n) return;
+          if(el.value) state.workerTypes[n] = el.value; else delete state.workerTypes[n];
+          syncWorkerTypeSelects(n);
+          save();
+        });
+        wtypeSel = el;
+        td.append(el);
+        tr.append(td);
+        return;
+      }
+
+      if(c.kind === 'select'){
+        el = document.createElement('select');
+        el.innerHTML = '<option value="">בחרו…</option>' + TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
+        el.value = r.type;
+      } else {
+        el = document.createElement('input');
+        el.type = c.kind;
+        el.value = r[c.f] || '';
+        if(c.kind === 'text') el.autocomplete = 'off';
+        if(c.f === 'name') el.placeholder = 'שם העובד';
+      }
+      el.setAttribute('aria-label', c.label);
+      const handler = () => {
+        r[c.f] = el.value;
+        if(c.f === 'name' && wtypeSel){
+          wtypeSel.value = wtypeOf(r.name);
+          wtypeSel.disabled = !r.name.trim();
+        }
+        afterChange(r, tr);
+      };
+      el.addEventListener('input', handler);
+      el.addEventListener('change', handler);
+      td.append(el);
+      tr.append(td);
+    });
+
+    const tdDel = document.createElement('td');
+    tdDel.className = 'c-del';
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'del';
+    del.textContent = '✕';
+    del.setAttribute('aria-label', 'מחיקת השורה');
+    del.title = 'מחיקת השורה';
+    del.addEventListener('click', () => deleteRow(r));
+    tdDel.append(del);
+    tr.append(tdDel);
+
+    updateRowClass(tr, r);
+    return tr;
+  }
+
+  function renderTable(){
+    tbody.replaceChildren(...state.rows.map(r => rowEl(r)));
+    updateStats();
+  }
+
+  async function deleteRow(r){
+    if(!isEmpty(r) && !confirm('למחוק את השורה?' + (r.invoiceFileId ? ' גם הקובץ המצורף יימחק.' : ''))) return;
+    if(r.invoiceFileId) await removeFileData(r.invoiceFileId);
+    state.rows = state.rows.filter(x => x !== r);
+    ensureTrailing(state);
+    renderTable();
+    save();
+  }
+
+  function updateStats(){
+    const filled = state.rows.filter(r => !isEmpty(r));
+    const noInv = filled.filter(r => !r.invoice).length;
+    $('#statRows').textContent = `${filled.length} שורות`;
+    $('#statNoInv').textContent = noInv ? `${noInv} בלי חשבונית` : '';
+  }
+
+  $('#sortBtn').addEventListener('click', () => {
+    state.rows = state.rows.filter(r => !isEmpty(r)).sort(byDate);
+    ensureTrailing(state);
+    renderTable();
+    save();
+  });
+
+  /* ---------- Tabs ---------- */
+  const tabs = document.querySelectorAll('.tab');
+  function showTab(id){
+    tabs.forEach(t => {
+      const on = t.dataset.tab === id;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+    if(id === 'summary') renderSummary();
+    try { localStorage.setItem(KEY + '-tab', id); } catch(e){}
+  }
+  tabs.forEach(t => t.addEventListener('click', () => {
+    if(t.dataset.tab === 'log') renderTable();
+    showTab(t.dataset.tab);
+  }));
+
+  /* ---------- Summary ---------- */
+  const openSet = new Set();
+  const rFrom = $('#rFrom'), rTo = $('#rTo');
+
+  function range(){
+    let f = rFrom.value, t = rTo.value;
+    if(f && t && f > t) [f, t] = [t, f];
+    return {f, t};
+  }
+  function inRange(d, rg){
+    if(!d) return !rg.f && !rg.t;
+    if(rg.f && d < rg.f) return false;
+    if(rg.t && d > rg.t) return false;
+    return true;
+  }
+  function rangeText(rg){
+    if(!rg.f && !rg.t) return 'כל התאריכים';
+    if(rg.f && !rg.t) return `מ־${fmt(rg.f)} והלאה`;
+    if(!rg.f && rg.t) return `עד ${fmt(rg.t)}`;
+    return `${fmt(rg.f)} עד ${fmt(rg.t)}`;
+  }
+  function extrasOf(name, create){
+    if(!state.extras[name]){
+      if(!create) return {bonuses:[], vacations:[]};
+      state.extras[name] = {bonuses:[], vacations:[]};
+    }
+    return state.extras[name];
+  }
+
+  function buildEmployees(rg){
+    const map = new Map();
+    const get = n => { if(!map.has(n)) map.set(n, {name:n, rows:[]}); return map.get(n); };
+    state.rows.forEach(r => {
+      const n = r.name.trim();
+      if(!n || isEmpty(r)) return;
+      const e = get(n);
+      if(inRange(r.date, rg)) e.rows.push(r);
+    });
+    Object.keys(state.extras).forEach(n => {
+      const x = state.extras[n];
+      if(x.bonuses.length || x.vacations.length) get(n);
+    });
+    return [...map.values()].map(e => {
+      const x = extrasOf(e.name, false);
+      e.wtype = wtypeOf(e.name);
+      e.rows.sort(byDate);
+      e.days = new Set(e.rows.filter(r => r.date).map(r => r.date)).size;
+      e.allBonuses = [...x.bonuses].sort(byDate);
+      e.bonuses = e.allBonuses.filter(b => inRange(b.date, rg));
+      e.bonusHours = round(e.bonuses.reduce((s,b) => s + b.hours, 0));
+      e.allVac = [...x.vacations].sort(byDate);
+      e.vac = e.allVac.filter(v => inRange(v.date, rg));
+      e.vacDays = e.vac.length;
+      e.missingInv = e.rows.filter(r => !r.invoice).length;
+      return e;
+    }).sort((a,b) => a.name.localeCompare(b.name, 'he'));
+  }
+
+  function empHTML(e, rg, today){
+    const open = openSet.has(e.name) ? ' open' : '';
+    const rangeOn = rg.f || rg.t;
+    const badgeCls = e.wtype === 'קבלן' ? 'wtype kablan' : e.wtype ? 'wtype' : 'wtype none';
+
+    const work = e.rows.length ? `
+      <div class="mini-wrap"><table class="mini">
+        <thead><tr><th>תאריך</th><th>מקום עבודה</th><th>חברה</th><th>סוג עבודה</th><th>חשבונית</th><th>מספר חשבונית</th><th>קובץ</th><th>הערות</th></tr></thead>
+        <tbody>${e.rows.map(r => {
+          const f = r.invoiceFileId ? fileCache.get(r.invoiceFileId) : null;
+          return `
+          <tr class="${r.invoice ? '' : 'no-inv'}">
+            <td>${r.date ? fmt(r.date) : 'ללא תאריך'}</td><td>${esc(r.place)}</td><td>${esc(r.company)}</td>
+            <td>${esc(r.type)}</td><td>${r.invoice ? 'כן' : 'לא'}</td><td>${esc(r.invoiceNo)}</td>
+            <td>${f ? `<a href="${f.url}" target="_blank" rel="noopener">פתיחה</a>` : ''}</td><td>${esc(r.notes)}</td>
+          </tr>`;}).join('')}
+        </tbody></table></div>`
+      : '<p class="muted">אין ימי עבודה בטווח שנבחר.</p>';
+
+    const bList = e.allBonuses.length ? `<ul class="items">${e.allBonuses.map(b => `
+        <li class="${inRange(b.date, rg) ? '' : 'out'}"><span>${fmt(b.date)}</span><span class="grow">${b.hours} שעות</span>
+        <button class="del" type="button" data-act="del-bonus" data-id="${b.id}" aria-label="מחיקת בונוס">✕</button></li>`).join('')}</ul>`
+      : '<p class="muted">אין שעות בונוס עדיין.</p>';
+
+    const vList = e.allVac.length ? `<ul class="items">${e.allVac.map(v => `
+        <li class="${inRange(v.date, rg) ? '' : 'out'}"><span class="grow">${fmt(v.date)}</span>
+        <button class="del" type="button" data-act="del-vac" data-id="${v.id}" aria-label="מחיקת יום חופשה">✕</button></li>`).join('')}</ul>`
+      : '<p class="muted">אין ימי חופשה עדיין.</p>';
+
+    const outNote = rangeOn && (e.allBonuses.length > e.bonuses.length || e.allVac.length > e.vac.length)
+      ? '<p class="out-note">פריטים בצבע חיוור נמצאים מחוץ לטווח התאריכים ולא נספרים בסיכום.</p>' : '';
+
+    return `
+    <details class="emp" data-name="${esc(e.name)}"${open}>
+      <summary>
+        <span class="emp-name">${esc(e.name)}</span>
+        <span class="${badgeCls}">${e.wtype ? esc(e.wtype) : 'סוג עובד לא נבחר'}</span>
+        <span class="days"><b>${e.days}</b> ימי עבודה</span>
+        <span class="meta">${e.bonusHours} שעות בונוס</span>
+        <span class="meta">${e.vacDays} ימי חופשה</span>
+        ${e.missingInv ? `<span class="warn">${e.missingInv} בלי חשבונית</span>` : ''}
+      </summary>
+      <div class="emp-body">
+        <div class="wtype-field">
+          <label>סוג עובד
+            <select data-k="wtype">
+              <option value="">בחרו…</option>
+              ${WTYPES.map(t => `<option value="${t}"${e.wtype === t ? ' selected' : ''}>${t}</option>`).join('')}
+            </select>
+          </label>
+        </div>
+        <h3>מתי ואיפה עבד</h3>
+        ${work}
+        <div class="extras">
+          <section>
+            <h3>שעות בונוס</h3>
+            <div class="add-form">
+              <label>תאריך<input type="date" data-k="bdate" value="${today}"></label>
+              <label>שעות<input type="number" data-k="bhours" min="0" step="0.5" inputmode="decimal"></label>
+              <button class="btn" type="button" data-act="add-bonus">הוספת בונוס</button>
+            </div>
+            ${bList}
+          </section>
+          <section>
+            <h3>חופשות</h3>
+            <div class="add-form">
+              <label>מתאריך<input type="date" data-k="vfrom" value="${today}"></label>
+              <label>עד תאריך (לא חובה)<input type="date" data-k="vto"></label>
+              <button class="btn" type="button" data-act="add-vac">הוספת חופשה</button>
+            </div>
+            ${vList}
+          </section>
+        </div>
+        ${outNote}
+      </div>
+    </details>`;
+  }
+
+  function renderSummary(){
+    const rg = range();
+    const emps = buildEmployees(rg);
+    $('#rangeNote').textContent = `מוצגים נתונים עבור: ${rangeText(rg)}`;
+    const box = $('#empList');
+    if(!emps.length){
+      box.innerHTML = `<div class="empty-state">
+        <p>עדיין אין עובדים להצגה.</p>
+        <p>הוסיפו שורות בלשונית "רישום עבודות" והעובדים יופיעו כאן.</p></div>`;
+      return;
+    }
+    const today = todayISO();
+    box.innerHTML = emps.map(e => empHTML(e, rg, today)).join('');
+  }
+
+  const empList = $('#empList');
+  empList.addEventListener('toggle', ev => {
+    const d = ev.target;
+    if(!d.matches || !d.matches('details.emp')) return;
+    if(d.open) openSet.add(d.dataset.name); else openSet.delete(d.dataset.name);
+  }, true);
+
+  empList.addEventListener('change', ev => {
+    if(!ev.target.matches('[data-k=wtype]')) return;
+    const name = ev.target.closest('details.emp').dataset.name;
+    if(ev.target.value) state.workerTypes[name] = ev.target.value; else delete state.workerTypes[name];
+    openSet.add(name);
+    save();
+    renderSummary();
+  });
+
+  empList.addEventListener('click', ev => {
+    const btn = ev.target.closest('button[data-act]');
+    if(!btn) return;
+    const det = btn.closest('details.emp');
+    const name = det.dataset.name;
+    const act = btn.dataset.act;
+
+    if(act === 'add-bonus'){
+      const d = det.querySelector('[data-k=bdate]').value;
+      const h = parseFloat(det.querySelector('[data-k=bhours]').value);
+      if(!d){ alert('בחרו תאריך לבונוס.'); return; }
+      if(!(h > 0)){ alert('הזינו מספר שעות גדול מאפס.'); return; }
+      extrasOf(name, true).bonuses.push({id:uid(), date:d, hours:round(h)});
+    }
+    else if(act === 'add-vac'){
+      const f = det.querySelector('[data-k=vfrom]').value;
+      const t = det.querySelector('[data-k=vto]').value;
+      if(!f){ alert('בחרו תאריך התחלה לחופשה.'); return; }
+      let a = f, b = t || f;
+      if(b < a) [a, b] = [b, a];
+      const list = extrasOf(name, true).vacations;
+      const have = new Set(list.map(v => v.date));
+      const d = parseISO(a), end = parseISO(b);
+      let n = 0;
+      while(d <= end && n < 370){
+        const s = iso(d);
+        if(!have.has(s)){ list.push({id:uid(), date:s}); have.add(s); }
+        d.setDate(d.getDate() + 1);
+        n++;
+      }
+      list.sort(byDate);
+    }
+    else if(act === 'del-bonus'){
+      const x = extrasOf(name, true);
+      x.bonuses = x.bonuses.filter(b => b.id !== btn.dataset.id);
+    }
+    else if(act === 'del-vac'){
+      const x = extrasOf(name, true);
+      x.vacations = x.vacations.filter(v => v.id !== btn.dataset.id);
+    }
+    openSet.add(name);
+    save();
+    renderSummary();
+  });
+
+  empList.addEventListener('keydown', ev => {
+    if(ev.key === 'Enter' && ev.target.matches('.add-form input')){
+      ev.preventDefault();
+      ev.target.closest('.add-form').querySelector('button[data-act]').click();
+    }
+  });
+
+  rFrom.addEventListener('change', renderSummary);
+  rTo.addEventListener('change', renderSummary);
+  $('#thisMonth').addEventListener('click', () => {
+    const n = new Date();
+    rFrom.value = iso(new Date(n.getFullYear(), n.getMonth(), 1));
+    rTo.value = iso(new Date(n.getFullYear(), n.getMonth()+1, 0));
+    renderSummary();
+  });
+  $('#lastMonth').addEventListener('click', () => {
+    const n = new Date();
+    rFrom.value = iso(new Date(n.getFullYear(), n.getMonth()-1, 1));
+    rTo.value = iso(new Date(n.getFullYear(), n.getMonth(), 0));
+    renderSummary();
+  });
+  $('#clearRange').addEventListener('click', () => {
+    rFrom.value = ''; rTo.value = '';
+    renderSummary();
+  });
+
+  /* ---------- Excel export ---------- */
+  function sheetName(n, used){
+    const base = n.replace(/[\\\/\?\*\[\]:']/g, ' ').trim().slice(0, 31) || 'עובד';
+    let s = base, i = 2;
+    while(used.has(s.toLowerCase())){
+      const suf = ` (${i++})`;
+      s = base.slice(0, 31 - suf.length) + suf;
+    }
+    used.add(s.toLowerCase());
+    return s;
+  }
+
+  $('#exportBtn').addEventListener('click', () => {
+    if(typeof XLSX === 'undefined'){
+      alert('ייצוא לאקסל דורש חיבור לאינטרנט בפעם הראשונה שהקובץ נפתח. התחברו לאינטרנט, רעננו את הדף ונסו שוב.');
+      return;
+    }
+    const rg = range();
+    const emps = buildEmployees(rg);
+    if(!emps.length){ alert('אין נתונים לייצוא.'); return; }
+    const rt = rangeText(rg);
+
+    const wb = XLSX.utils.book_new();
+    wb.Workbook = {Views:[{RTL:true}]};
+    wb.Props = {Title:'דוח עובדים', Author:CREDIT_NAME, Company:CREDIT_NAME};
+
+    const sum = [
+      ['סיכום עובדים'],
+      ['טווח תאריכים', rt],
+      [],
+      ['שם העובד', 'סוג עובד', 'ימי עבודה', 'שעות בונוס', 'ימי חופשה']
+    ];
+    emps.forEach(e => sum.push([e.name, e.wtype, e.days, e.bonusHours, e.vacDays]));
+    sum.push([], [], [`נבנה על ידי ${CREDIT_NAME}`]);
+    const ws = XLSX.utils.aoa_to_sheet(sum);
+    ws['!cols'] = [{wch:24},{wch:12},{wch:12},{wch:12},{wch:12}];
+    XLSX.utils.book_append_sheet(wb, ws, 'סיכום');
+
+    const used = new Set(['סיכום']);
+    emps.forEach(e => {
+      const aoa = [
+        [e.name],
+        ['סוג עובד', e.wtype || 'לא נבחר'],
+        ['טווח תאריכים', rt],
+        ['ימי עבודה', e.days],
+        ['שעות בונוס', e.bonusHours],
+        ['ימי חופשה', e.vacDays],
+        [],
+        ['ימי עבודה'],
+        ['תאריך', 'סוג עבודה', 'מקום עבודה', 'חברה', 'קיימת חשבונית?', 'מספר חשבונית', 'הערות']
+      ];
+      if(e.rows.length) e.rows.forEach(r => aoa.push([fmt(r.date), r.type, r.place, r.company, r.invoice ? 'כן' : 'לא', r.invoiceNo, r.notes]));
+      else aoa.push(['אין ימי עבודה בטווח']);
+      aoa.push([], ['בונוסים'], ['תאריך', 'שעות']);
+      if(e.bonuses.length) e.bonuses.forEach(b => aoa.push([fmt(b.date), b.hours]));
+      else aoa.push(['אין בונוסים בטווח']);
+      aoa.push([], ['חופשות'], ['תאריך']);
+      if(e.vac.length) e.vac.forEach(v => aoa.push([fmt(v.date)]));
+      else aoa.push(['אין חופשות בטווח']);
+
+      const s = XLSX.utils.aoa_to_sheet(aoa);
+      s['!cols'] = [{wch:16},{wch:14},{wch:20},{wch:18},{wch:15},{wch:16},{wch:32}];
+      XLSX.utils.book_append_sheet(wb, s, sheetName(e.name, used));
+    });
+
+    const fname = (rg.f || rg.t)
+      ? `דוח_עובדים_${rg.f || 'התחלה'}_עד_${rg.t || 'היום'}.xlsx`
+      : 'דוח_עובדים_כל_התאריכים.xlsx';
+    XLSX.writeFile(wb, fname);
+  });
+
+  /* ---------- Backup / restore (includes invoice files) ---------- */
+  function blobToB64(blob){
+    return new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(String(fr.result).split(',')[1] || '');
+      fr.onerror = () => rej(fr.error);
+      fr.readAsDataURL(blob);
+    });
+  }
+  function b64ToBuf(b64){
+    const bin = atob(b64);
+    const u = new Uint8Array(bin.length);
+    for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return u.buffer;
+  }
+
+  $('#backupBtn').addEventListener('click', async () => {
+    const btn = $('#backupBtn');
+    btn.disabled = true;
+    try {
+      const used = new Set(state.rows.map(r => r.invoiceFileId).filter(Boolean));
+      const files = [];
+      for(const [id, f] of fileCache){
+        if(used.has(id)) files.push({id, name:f.name, type:f.type, data: await blobToB64(f.blob)});
+      }
+      const payload = {version:2, rows: state.rows.filter(r => !isEmpty(r)), extras: state.extras,
+        workerTypes: state.workerTypes, files};
+      const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `גיבוי_יומן_עבודות_${todayISO()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    } catch(e){
+      alert('יצירת הגיבוי נכשלה.');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $('#restoreBtn').addEventListener('click', () => $('#restoreFile').click());
+  $('#restoreFile').addEventListener('change', ev => {
+    const file = ev.target.files[0];
+    ev.target.value = '';
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      let data;
+      try { data = JSON.parse(reader.result); } catch(e){ data = null; }
+      if(!data || (!Array.isArray(data.rows) && !data.extras)){
+        alert('הקובץ שנבחר אינו קובץ גיבוי של יומן העבודות.');
+        return;
+      }
+      if(!confirm('השחזור יחליף את כל הנתונים והקבצים הנוכחיים בנתונים מהגיבוי. להמשיך?')) return;
+
+      state = normalize(data);
+      openSet.clear();
+      for(const f of fileCache.values()) URL.revokeObjectURL(f.url);
+      fileCache.clear();
+      let failed = 0;
+      if(filesOK && Array.isArray(data.files)){
+        try { await idbClear(); } catch(e){}
+        for(const f of data.files){
+          if(!f || !f.id || !f.data) continue;
+          try {
+            const rec = {id:f.id, name:String(f.name || 'חשבונית'), type:f.type || guessType(f.name), buf:b64ToBuf(f.data)};
+            await idbPut(rec);
+            cacheFile(rec);
+          } catch(e){ failed++; }
+        }
+      }
+      save();
+      renderTable();
+      renderSummary();
+      setStatus(failed ? `הגיבוי שוחזר, אבל ${failed} קבצים לא נשמרו` : 'הגיבוי שוחזר ונשמר', !!failed);
+    };
+    reader.readAsText(file);
+  });
+
+  /* ---------- Start ---------- */
+  (async function start(){
+    try {
+      const all = await idbAll();
+      const used = new Set(state.rows.map(r => r.invoiceFileId).filter(Boolean));
+      for(const rec of all){
+        if(used.has(rec.id)) cacheFile(rec);
+        else idbDel(rec.id).catch(() => {});
+      }
+      filesOK = true;
+    } catch(e){
+      filesOK = false;
+    }
+    renderTable();
+    setStatus('הנתונים נשמרים אוטומטית בדפדפן', false);
+    let startTab = 'log';
+    try { startTab = localStorage.getItem(KEY + '-tab') || 'log'; } catch(e){}
+    showTab(startTab === 'summary' ? 'summary' : 'log');
+  })();
+})();
+</script>
+</body>
+</html>
