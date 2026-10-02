@@ -133,7 +133,7 @@
   .range{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:var(--surface);
     border:1px solid var(--line);border-radius:10px;padding:12px}
   .range label,.add-form label,.wtype-field label{display:flex;flex-direction:column;gap:4px;font-size:.86rem;font-weight:600;color:var(--muted)}
-  .range input,.add-form input,.wtype-field select{font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);
+  .range input,.add-form input,.add-form select,.wtype-field select{font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);
     border-radius:6px;padding:7px 8px;min-height:40px}
   .range .spacer{flex:1}
   .range-note{color:var(--muted);margin:10px 2px 4px;font-size:.92rem}
@@ -177,6 +177,28 @@
   ul.items li.out{opacity:.45}
   .out-note{font-size:.84rem;color:var(--muted);margin:6px 0 0}
 
+  /* Places view */
+  .grow-label{flex:1 1 220px}
+  .grow-label input{width:100%}
+  .day-places{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+  .day-places .lead{color:var(--muted);font-weight:600;font-size:.92rem}
+  .chip{font:inherit;font-weight:600;background:var(--surface);color:var(--ink);border:1px solid var(--line);
+    border-radius:999px;padding:6px 14px;cursor:pointer;min-height:38px}
+  .chip:hover{border-color:var(--ink)}
+  .chip b{color:var(--accent);margin-inline-start:6px}
+  .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip[aria-pressed="true"] b{color:#fff}
+  .place-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px 16px 16px}
+  .place-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 18px;padding-top:12px}
+  .place-head h2{font-family:"Secular One","Assistant",Arial,sans-serif;font-weight:400;font-size:1.55rem;margin:0;line-height:1.2}
+  .place-card h3{font-size:1.02rem;margin:18px 0 8px}
+  .place-add label{flex:1 1 150px}
+  .place-add label input,.place-add label select{width:100%}
+  .add-form label.check{flex:0 0 auto;flex-direction:row;align-items:center;gap:8px;min-height:40px;color:var(--ink);font-size:.95rem}
+  .add-form label.check input{width:20px;height:20px;min-height:0;accent-color:var(--green)}
+  #copyPrev{margin-top:10px}
+  table.mini.place-list{min-width:640px}
+
   .empty-state{text-align:center;padding:48px 16px;color:var(--muted)}
   .empty-state p{margin:4px 0}
 
@@ -205,6 +227,7 @@
 
 <nav class="tabs" role="tablist">
   <button class="tab" role="tab" id="tab-log" data-tab="log" aria-controls="panel-log" aria-selected="true" type="button">רישום עבודות</button>
+  <button class="tab" role="tab" id="tab-places" data-tab="places" aria-controls="panel-places" aria-selected="false" type="button">מקומות עבודה</button>
   <button class="tab" role="tab" id="tab-summary" data-tab="summary" aria-controls="panel-summary" aria-selected="false" type="button">סיכום עובדים</button>
 </nav>
 
@@ -231,6 +254,37 @@
     <p class="hint">שורה חדשה נוספת אוטומטית כשמתחילים למלא את השורה האחרונה. כל שורה היא יום עבודה אחד של עובד אחד. סוג העובד נשמר לכל עובד, כך שמספיק לבחור אותו פעם אחת.</p>
   </section>
 
+  <section id="panel-places" role="tabpanel" aria-labelledby="tab-places" hidden>
+    <div class="range">
+      <label>תאריך<input type="date" id="pDate"></label>
+      <button class="btn" id="pPrev" type="button">יום קודם</button>
+      <button class="btn" id="pToday" type="button">היום</button>
+      <button class="btn" id="pNext" type="button">יום הבא</button>
+      <label class="grow-label">מקום עבודה<input type="text" id="pPlace" list="dl-places" autocomplete="off" placeholder="בחרו מהרשימה או הקלידו מקום חדש"></label>
+    </div>
+    <div id="dayPlaces" class="day-places"></div>
+    <div id="placeEmpty" class="empty-state"><p>בחרו מקום עבודה, כדי לראות מי עבד שם בתאריך הזה ולהוסיף עובדים.</p></div>
+    <div id="placeDetail" class="place-card" hidden>
+      <div class="place-head">
+        <h2 id="placeTitle"></h2>
+        <span id="placeSub" class="meta"></span>
+        <span id="placeCount" class="days"></span>
+      </div>
+      <div id="placeList"></div>
+      <button class="btn" id="copyPrev" type="button" hidden></button>
+      <h3>הוספת עובד למקום הזה</h3>
+      <div class="add-form place-add">
+        <label>שם העובד<input type="text" id="aName" list="dl-names" autocomplete="off"></label>
+        <label>סוג עובד<select id="aWtype"><option value="">בחרו…</option><option value="בשכר">בשכר</option><option value="קבלן">קבלן</option></select></label>
+        <label>סוג עבודה<select id="aType"><option value="">בחרו…</option><option value="יומית">יומית</option><option value="פרויקט">פרויקט</option><option value="קבלנות">קבלנות</option></select></label>
+        <label>חברה<input type="text" id="aCompany" list="dl-companies" autocomplete="off"></label>
+        <label class="check"><input type="checkbox" id="aInvoice">קיימת חשבונית</label>
+        <label>הערות<input type="text" id="aNotes" autocomplete="off"></label>
+        <button class="btn primary" id="aAdd" type="button">הוספה</button>
+      </div>
+    </div>
+  </section>
+
   <section id="panel-summary" role="tabpanel" aria-labelledby="tab-summary" hidden>
     <div class="range">
       <label>מתאריך<input type="date" id="rFrom"></label>
@@ -245,6 +299,10 @@
     <div id="empList"></div>
   </section>
 </main>
+
+<datalist id="dl-places"></datalist>
+<datalist id="dl-names"></datalist>
+<datalist id="dl-companies"></datalist>
 
 <footer class="credit" id="credit"></footer>
 
@@ -717,6 +775,7 @@
       document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
     });
     if(id === 'summary') renderSummary();
+    if(id === 'places') renderPlaces();
     try { localStorage.setItem(KEY + '-tab', id); } catch(e){}
   }
   tabs.forEach(t => t.addEventListener('click', () => {
@@ -962,6 +1021,181 @@
     renderSummary();
   });
 
+  /* ---------- Places view ---------- */
+  const pDate = $('#pDate'), pPlace = $('#pPlace');
+  const aName = $('#aName'), aWtype = $('#aWtype'), aType = $('#aType'),
+        aCompany = $('#aCompany'), aInvoice = $('#aInvoice'), aNotes = $('#aNotes');
+  pDate.value = todayISO();
+  const normPlace = s => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const weekday = d => { try { return new Intl.DateTimeFormat('he-IL', {weekday:'long'}).format(parseISO(d)); } catch(e){ return ''; } };
+
+  function distinct(values){
+    const m = new Map();
+    values.forEach(v => { const t = (v || '').trim(); if(t && !m.has(t.toLowerCase())) m.set(t.toLowerCase(), t); });
+    return [...m.values()].sort((a,b) => a.localeCompare(b, 'he'));
+  }
+  function fillDatalists(){
+    const filled = state.rows.filter(r => !isEmpty(r));
+    const opts = list => list.map(v => `<option value="${esc(v)}">`).join('');
+    $('#dl-places').innerHTML = opts(distinct(filled.map(r => r.place)));
+    $('#dl-names').innerHTML = opts(distinct([...filled.map(r => r.name), ...Object.keys(state.workerTypes)]));
+    $('#dl-companies').innerHTML = opts(distinct(filled.map(r => r.company)));
+  }
+  function lastCompanyAt(place){
+    const k = normPlace(place);
+    const rs = state.rows.filter(r => !isEmpty(r) && normPlace(r.place) === k && r.company.trim()).sort(byDate);
+    return rs.length ? rs[rs.length-1].company.trim() : '';
+  }
+  function rowsAt(place, date){
+    const k = normPlace(place);
+    return state.rows.filter(r => !isEmpty(r) && r.date === date && normPlace(r.place) === k);
+  }
+  function previousDayAt(place, date){
+    const k = normPlace(place);
+    const dates = state.rows.filter(r => !isEmpty(r) && r.date && r.date < date && normPlace(r.place) === k).map(r => r.date).sort();
+    return dates.length ? dates[dates.length-1] : '';
+  }
+  function insertRow(r){
+    const last = state.rows[state.rows.length-1];
+    if(last && isEmpty(last)) state.rows.splice(state.rows.length-1, 0, r);
+    else { state.rows.push(r); ensureTrailing(state); }
+  }
+  function onPlaceChosen(){
+    if(!aCompany.value.trim() || aCompany.dataset.auto === '1'){
+      aCompany.value = lastCompanyAt(pPlace.value);
+      aCompany.dataset.auto = '1';
+    }
+  }
+
+  function renderPlaces(){
+    fillDatalists();
+    const date = pDate.value;
+    const place = pPlace.value.trim();
+    const k = normPlace(place);
+
+    // places that had work on the chosen date
+    const dayRows = state.rows.filter(r => !isEmpty(r) && date && r.date === date);
+    const groups = new Map();
+    dayRows.forEach(r => {
+      const pk = normPlace(r.place);
+      if(!pk) return;
+      if(!groups.has(pk)) groups.set(pk, {name:r.place.trim(), names:new Set()});
+      groups.get(pk).names.add(r.name.trim());
+    });
+    const noPlace = dayRows.filter(r => !normPlace(r.place)).length;
+    const chips = [...groups.entries()].sort((a,b) => a[1].name.localeCompare(b[1].name, 'he'))
+      .map(([pk, g]) => `<button class="chip" type="button" data-place="${esc(g.name)}" aria-pressed="${pk === k}">${esc(g.name)}<b>${[...g.names].filter(Boolean).length}</b></button>`).join('');
+    $('#dayPlaces').innerHTML = !date ? '<span class="lead">בחרו תאריך.</span>'
+      : (chips ? `<span class="lead">מקומות עם עבודה ב־${fmt(date)}:</span>${chips}` : `<span class="lead">אין עבודות רשומות ב־${fmt(date)}.</span>`)
+        + (noPlace ? `<span class="lead">(${noPlace} שורות בלי מקום עבודה)</span>` : '');
+
+    const show = !!(place && date);
+    $('#placeDetail').hidden = !show;
+    $('#placeEmpty').hidden = show;
+    if(!show) return;
+
+    const rows = rowsAt(place, date).sort((a,b) => a.name.localeCompare(b.name, 'he'));
+    const workers = new Set(rows.map(r => r.name.trim()).filter(Boolean)).size;
+    $('#placeTitle').textContent = place;
+    $('#placeSub').textContent = `${weekday(date)}, ${fmt(date)}`;
+    $('#placeCount').innerHTML = `<b>${workers}</b> עובדים`;
+
+    $('#placeList').innerHTML = rows.length ? `
+      <div class="mini-wrap"><table class="mini place-list">
+        <thead><tr><th>שם העובד</th><th>סוג עובד</th><th>סוג עבודה</th><th>חברה</th><th>חשבונית</th><th>הערות</th><th><span class="sr">הסרה</span></th></tr></thead>
+        <tbody>${rows.map(r => `
+          <tr class="${r.invoice ? '' : 'no-inv'}">
+            <td>${esc(r.name) || '<span class="muted">ללא שם</span>'}</td><td>${esc(wtypeOf(r.name))}</td><td>${esc(r.type)}</td>
+            <td>${esc(r.company)}</td><td>${r.invoice ? 'כן' : 'לא'}</td><td>${esc(r.notes)}</td>
+            <td><button class="del small" type="button" data-del="${r.id}" aria-label="הסרת העובד מהמקום בתאריך הזה" title="הסרה">✕</button></td>
+          </tr>`).join('')}
+        </tbody></table></div>`
+      : '<p class="muted">עדיין אין עובדים רשומים כאן בתאריך הזה. הוסיפו אותם למטה.</p>';
+
+    const prev = previousDayAt(place, date);
+    const copyBtn = $('#copyPrev');
+    copyBtn.hidden = !prev;
+    if(prev){ copyBtn.textContent = `העתקת העובדים מ־${fmt(prev)}`; copyBtn.dataset.prev = prev; }
+  }
+
+  function addToPlace(){
+    const date = pDate.value, place = pPlace.value.trim(), name = aName.value.trim();
+    if(!date){ alert('בחרו תאריך.'); return; }
+    if(!place){ alert('בחרו מקום עבודה.'); pPlace.focus(); return; }
+    if(!name){ alert('הקלידו שם עובד.'); aName.focus(); return; }
+    const other = state.rows.find(r => !isEmpty(r) && r.date === date && r.name.trim() === name);
+    if(other){
+      const same = normPlace(other.place) === normPlace(place);
+      const msg = same ? `${name} כבר רשום כאן בתאריך הזה. להוסיף שורה נוספת?`
+                       : `${name} כבר רשום ב־${other.place.trim() || 'מקום אחר'} בתאריך הזה. להוסיף גם כאן?`;
+      if(!confirm(msg)) return;
+    }
+    const r = Object.assign(blankRow(date), {
+      name, place, type: aType.value, company: aCompany.value.trim(),
+      invoice: aInvoice.checked, notes: aNotes.value.trim()
+    });
+    if(aWtype.value) state.workerTypes[name] = aWtype.value;
+    insertRow(r);
+    save();
+    aName.value = ''; aNotes.value = ''; aWtype.value = '';
+    renderPlaces();
+    aName.focus();
+  }
+
+  $('#aAdd').addEventListener('click', addToPlace);
+  $('#panel-places .place-add').addEventListener('keydown', ev => {
+    if(ev.key === 'Enter' && ev.target.matches('input[type=text]')){ ev.preventDefault(); addToPlace(); }
+  });
+  aName.addEventListener('input', () => { const t = wtypeOf(aName.value); if(t) aWtype.value = t; });
+  aCompany.addEventListener('input', () => { aCompany.dataset.auto = '0'; });
+
+  pDate.addEventListener('change', renderPlaces);
+  pPlace.addEventListener('input', renderPlaces);
+  pPlace.addEventListener('change', () => { onPlaceChosen(); renderPlaces(); });
+  const shiftDay = n => { const d = pDate.value ? parseISO(pDate.value) : new Date(); d.setDate(d.getDate() + n); pDate.value = iso(d); renderPlaces(); };
+  $('#pPrev').addEventListener('click', () => shiftDay(-1));
+  $('#pNext').addEventListener('click', () => shiftDay(1));
+  $('#pToday').addEventListener('click', () => { pDate.value = todayISO(); renderPlaces(); });
+
+  $('#dayPlaces').addEventListener('click', ev => {
+    const chip = ev.target.closest('.chip');
+    if(!chip) return;
+    pPlace.value = chip.dataset.place;
+    onPlaceChosen();
+    renderPlaces();
+  });
+
+  $('#placeList').addEventListener('click', async ev => {
+    const btn = ev.target.closest('button[data-del]');
+    if(!btn) return;
+    const r = state.rows.find(x => x.id === btn.dataset.del);
+    if(!r) return;
+    if(!confirm(`להסיר את ${r.name.trim() || 'השורה'} מהמקום הזה בתאריך הזה?` + (r.invoiceFileId ? ' גם הקובץ המצורף יימחק.' : ''))) return;
+    if(r.invoiceFileId) await removeFileData(r.invoiceFileId);
+    state.rows = state.rows.filter(x => x !== r);
+    ensureTrailing(state);
+    save();
+    renderPlaces();
+  });
+
+  $('#copyPrev').addEventListener('click', () => {
+    const date = pDate.value, place = pPlace.value.trim(), prev = $('#copyPrev').dataset.prev;
+    if(!prev) return;
+    const here = new Set(rowsAt(place, date).map(r => r.name.trim()));
+    const seen = new Set();
+    let added = 0;
+    rowsAt(place, prev).forEach(p => {
+      const n = p.name.trim();
+      if(!n || here.has(n) || seen.has(n)) return;
+      seen.add(n);
+      insertRow(Object.assign(blankRow(date), {name:n, place, type:p.type, company:p.company.trim()}));
+      added++;
+    });
+    if(!added){ alert('כל העובדים מאותו יום כבר רשומים כאן.'); return; }
+    save();
+    renderPlaces();
+  });
+
   /* ---------- Excel export ---------- */
   function sheetName(n, used){
     const base = n.replace(/[\\\/\?\*\[\]:']/g, ' ').trim().slice(0, 31) || 'עובד';
@@ -1108,6 +1342,7 @@
       save();
       renderTable();
       renderSummary();
+      renderPlaces();
       setStatus(failed ? `הגיבוי שוחזר, אבל ${failed} קבצים לא נשמרו` : 'הגיבוי שוחזר ונשמר', !!failed);
     };
     reader.readAsText(file);
@@ -1130,7 +1365,7 @@
     setStatus('הנתונים נשמרים אוטומטית בדפדפן', false);
     let startTab = 'log';
     try { startTab = localStorage.getItem(KEY + '-tab') || 'log'; } catch(e){}
-    showTab(startTab === 'summary' ? 'summary' : 'log');
+    showTab(['summary','places'].includes(startTab) ? startTab : 'log');
   })();
 })();
 </script>
